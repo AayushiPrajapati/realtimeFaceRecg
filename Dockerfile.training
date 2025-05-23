@@ -19,6 +19,10 @@ WORKDIR /app
 # Copy requirements
 COPY requirements.txt .
 
+RUN apt-get update && \
+    apt-get install -y cmake g++ && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies including prometheus_client
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir prometheus_client

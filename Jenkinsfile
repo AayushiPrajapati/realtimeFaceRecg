@@ -19,19 +19,25 @@ pipeline {
         }
 
 
-        stage('Install Dependencies') {
-            steps {
-                echo "🔧 Installing dependencies..."
-                sh 'apt-get update && apt-get install -y cmake g++'
-                sh 'pip install -r requirements.txt'
-            }
-        }
+        // stage('Install Dependencies') {
+        //     steps {
+        //         echo "🔧 Installing dependencies..."
+        //         sh 'apt-get update && apt-get install -y cmake g++'
+        //         sh 'pip install -r requirements.txt'
+        //     }
+        // }
 
-        stage('Build Docker Images') {
-            steps {
-                echo '🐳 Building Docker image...'
-                sh 'echo docker build -t $DOCKER_REGISTRY/$IMAGE_NAME:latest .'
-            }
+       stage('Build Docker Images') {
+             steps {
+                echo '🐳 Building Docker images...'
+
+                sh """
+                  docker build -t $DOCKER_REGISTRY/$IMAGE_NAME1:$IMAGE_TAG -f Dockerfile.training .
+                  docker build -t $DOCKER_REGISTRY/$IMAGE_NAME2:$IMAGE_TAG -f Dockerfile.frontend .
+                  docker build -t $DOCKER_REGISTRY/$IMAGE_NAME3:$IMAGE_TAG -f Dockerfile.recognition .
+        """
+         }
+         
         }
 
         stage('Push Docker Images') {
