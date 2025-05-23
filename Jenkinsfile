@@ -46,7 +46,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 echo '🚀 Deploying to Kubernetes...'
-                sh 'bash kubernetes_start.sh'
+                // sh 'bash kubernetes_start.sh'
             }
         }
     }
