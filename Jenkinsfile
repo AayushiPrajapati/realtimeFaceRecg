@@ -8,6 +8,7 @@ pipeline {
         IMAGE_TAG = 'latest'
         IMAGE_NAME2 = 'frontend'    
         IMAGE_NAME3 = 'recognition'
+        KUBECONFIG = "$HOME/.kube/config"
         }
 
     stages {
@@ -64,24 +65,65 @@ pipeline {
 // }
 
 
-        stage('Push Docker Images') {
-            steps {
-                echo '📦 Pushing Docker image to registry...'
-                sh 'echo docker push $DOCKER_REGISTRY/$IMAGE_NAME:latest'
-            }
-        }
+       stage('Push Docker Images') {
+    steps {
+        echo '📦 Pushing Docker images to Docker Hub...'
 
-        stage('Run Tests') {
-            steps {
-                echo '🧪 Running dummy tests...'
-                sh 'echo pytest tests/ || true'
-            }
-        }
+        sh """
+            docker push $DOCKER_REGISTRY/$IMAGE_NAME1:$IMAGE_TAG
+            docker push $DOCKER_REGISTRY/$IMAGE_NAME2:$IMAGE_TAG
+            docker push $DOCKER_REGISTRY/$IMAGE_NAME3:$IMAGE_TAG
+        """
+    }
+}
+
+
+        // stage('Run Tests') {
+        //     steps {
+        //         echo '🧪 Running dummy tests...'
+        //         sh 'echo pytest tests/ || true'
+        //     }
+        // }
 
         stage('Deploy to Kubernetes') {
             steps {
                 echo '🚀 Deploying to Kubernetes...'
-                // sh 'bash kubernetes_start.sh'
+                sh '''
+                    minikube start --driver=docker --force
+
+                    kubectl apply -f k8s/namespace.yaml
+                    kubectl apply -f k8s/pvs.yaml
+                    kubectl apply -f k8s/copy-pod.yaml
+
+                    kubectl cp /home/aayushi/Desktop/spe_project/models/encodings.pkl face-recognition/copy-models:/app/models/encodings.pkl
+
+                    kubectl apply -f k8s/copy-data.yaml
+
+                    kubectl cp /home/aayushi/Desktop/spe_project/data/ face-recognition/copy-data:/app/
+
+                    kubectl exec -n face-recognition -it copy-models -- ls -l /app/models
+                    kubectl exec -n face-recognition -it copy-data -- ls -l /app/data
+
+                    kubectl delete pod copy-models -n face-recognition
+                    kubectl delete pod copy-data -n face-recognition
+
+                    eval $(minikube docker-env)
+
+                    kubectl apply -f k8s/frontend-deployment.yaml
+                    kubectl apply -f k8s/recognition-deployment.yaml
+                    # kubectl apply -f k8s/upload-data.yaml
+                    kubectl apply -f k8s/training-deployment.yaml
+                    kubectl apply -f k8s/services.yaml
+
+                    kubectl get pods -n face-recognition
+                    kubectl get services -n face-recognition
+
+                    minikube service frontend-service -n face-recognition --url
+
+                    kubectl logs -n face-recognition -l app=recognition --tail=20
+                    kubectl logs -n face-recognition -l app=frontend --tail=20
+                    kubectl logs -n face-recognition -l app=training --tail=20
+                '''
             }
         }
     }

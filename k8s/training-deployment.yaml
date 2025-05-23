@@ -15,7 +15,8 @@ spec:
     spec:
       initContainers:
       - name: init-data
-        image: busybox:1.28
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
         command: ["/bin/sh", "-c", "mkdir -p /app/data && ls -l /app/data"]
         volumeMounts:
         - name: data-volume
@@ -23,8 +24,8 @@ spec:
 
       containers:
       - name: training
-        image: training:latest
-        imagePullPolicy: Never
+        image: aayushi6402/training:latest
+        imagePullPolicy: IfNotPresent
         command: ["python"]
         args: ["train_service.py"]
         ports:

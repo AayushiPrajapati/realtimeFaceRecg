@@ -19,16 +19,17 @@ spec:
         fsGroup: 0
       initContainers:
       - name: init-x11
-        image: busybox
-        imagePullPolicy: Never
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        # imagePullPolicy: Never
         command: ["/bin/sh", "-c", "mkdir -p /tmp/.X11-unix && chmod 777 /tmp/.X11-unix"]
         volumeMounts:
         - name: x11-socket
           mountPath: /tmp/.X11-unix
       containers:
       - name: recognition
-        image: recognition:latest
-        imagePullPolicy: Never
+        image: aayushi6402/recognition:latest
+        imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
         command:

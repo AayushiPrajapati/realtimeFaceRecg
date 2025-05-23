@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: frontend:latest
-        imagePullPolicy: Never
+        image: aayushi6402/frontend:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5002
         volumeMounts:
