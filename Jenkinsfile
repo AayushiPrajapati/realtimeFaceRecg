@@ -36,14 +36,13 @@ pipeline {
             }
         }
 
-        stage('Prepare Data') {
-             steps {
-             sh 'cp -r /home/aayushi/Desktop/spe_project/data/ ./data'
-             sh 'cp /home/aayushi/Desktop/spe_project/models/encodings.pkl ./models'
-            //  sh 'cp /home/aayushi/Desktop/spe_project/models/haarcascade_frontalface_default.xml ./models/haarcascade_frontalface_default.xml'
-            //  sh 'cp /home/aayushi/Desktop/spe_project/models/haarcascade_profileface.xml ./models/haarcascade_profileface.xml'
-     }
+       stage('Prepare Data') {
+    steps {
+        sh 'cp -r /var/jenkins_data/data ./data'
+        sh 'cp -r /var/jenkins_data/models ./models'
+    }
 }
+
 
        stage('Build Docker Images') {
              steps {
@@ -57,12 +56,12 @@ pipeline {
          }
         }
 
-        stage('Cleanup Data') {
-    steps {
-        sh 'rm -rf ./data'
-        sh 'rm -rf ./models'
-    }
-}
+//         stage('Cleanup Data') {
+//     steps {
+//         sh 'rm -rf ./data'
+//         sh 'rm -rf ./models'
+//     }
+// }
 
 
         stage('Push Docker Images') {
