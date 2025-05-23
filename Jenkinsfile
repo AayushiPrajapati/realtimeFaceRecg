@@ -77,9 +77,9 @@ pipeline {
                             kubectl get nodes
 
                             kubectl apply -f k8s/namespace.yaml
-                            kubectl apply -f k8s/pvs.yaml
+                            kubectl apply -f k8s/pvs.yaml 
 
-                            kubectl apply -f k8s/copy-pod.yaml
+                            kubectl apply -f k8s/copy-pod.yaml -n face-recognition
                             kubectl wait --for=condition=Ready pod/copy-models -n face-recognition --timeout=60s
                             kubectl cp ./models/encodings.pkl face-recognition/copy-models:/app/models/encodings.pkl
 
@@ -95,10 +95,10 @@ pipeline {
 
                             eval $(minikube docker-env) || true
                             
-                            kubectl apply -f k8s/frontend-deployment.yaml
-                            kubectl apply -f k8s/recognition-deployment.yaml
-                            kubectl apply -f k8s/training-deployment.yaml
-                            kubectl apply -f k8s/services.yaml
+                            kubectl apply -f k8s/frontend-deployment.yaml -n face-recognition
+                            kubectl apply -f k8s/recognition-deployment.yaml -n face-recognition
+                            kubectl apply -f k8s/training-deployment.yaml -n face-recognition
+                            kubectl apply -f k8s/services.yaml -n face-recognition
 
                             kubectl wait --for=condition=Available deployment/frontend -n face-recognition --timeout=300s || echo "Frontend deployment timeout"
                             kubectl wait --for=condition=Available deployment/recognition -n face-recognition --timeout=300s || echo "Recognition deployment timeout"
@@ -131,13 +131,13 @@ pipeline {
                                 kubectl cluster-info
                                 kubectl get nodes
 
-                                kubectl apply -f k8s/namespace.yaml
-                                kubectl apply -f k8s/pvs.yaml
-                                kubectl apply -f k8s/frontend-deployment.yaml
-                                kubectl apply -f k8s/recognition-deployment.yaml
-                                kubectl apply -f k8s/training-deployment.yaml
-                                kubectl apply -f k8s/services.yaml
-                                kubectl get pods -n face-recognition
+                                kubectl apply -f k8s/namespace.yaml -n face-recognition
+                                kubectl apply -f k8s/pvs.yaml -n face-recognition
+                                kubectl apply -f k8s/frontend-deployment.yaml -n face-recognition
+                                kubectl apply -f k8s/recognition-deployment.yaml -n face-recognition
+                                kubectl apply -f k8s/training-deployment.yaml -n face-recognition
+                                kubectl apply -f k8s/services.yaml -n face-recognition
+                                kubectl get pods -n face-recognition -n face-recognition
                             '''
                         } catch (Exception fallbackError) {
                             echo "❌ Alternative deployment also failed: ${fallbackError.getMessage()}"
