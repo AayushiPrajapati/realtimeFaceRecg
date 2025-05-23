@@ -35,6 +35,16 @@ pipeline {
                 }
             }
         }
+
+        stage('Prepare Data') {
+             steps {
+             sh 'cp -r /home/aayushi/Desktop/spe_project/data/ ./data'
+             sh 'cp /home/aayushi/Desktop/spe_project/models/encodings.pkl ./models'
+            //  sh 'cp /home/aayushi/Desktop/spe_project/models/haarcascade_frontalface_default.xml ./models/haarcascade_frontalface_default.xml'
+            //  sh 'cp /home/aayushi/Desktop/spe_project/models/haarcascade_profileface.xml ./models/haarcascade_profileface.xml'
+     }
+}
+
        stage('Build Docker Images') {
              steps {
                 echo '🐳 Building Docker images...'
@@ -45,8 +55,15 @@ pipeline {
                   docker build -t $DOCKER_REGISTRY/$IMAGE_NAME3:$IMAGE_TAG -f Dockerfile.recognition .
         """
          }
-         
         }
+
+        stage('Cleanup Data') {
+    steps {
+        sh 'rm -rf ./data'
+        sh 'rm -rf ./models'
+    }
+}
+
 
         stage('Push Docker Images') {
             steps {
