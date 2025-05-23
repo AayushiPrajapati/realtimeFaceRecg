@@ -3,22 +3,26 @@ pipeline {
 
     environment {
         // Dummy environment variables
-        DOCKER_REGISTRY = 'docker.io/yourusername'
-        IMAGE_NAME = 'realtime-face-recognition'
-    }
+        DOCKER_REGISTRY = 'docker.io/aayushi6402'
+        IMAGE_NAME1 = 'training'
+        IMAGE_TAG = 'latest'
+        IMAGE_NAME2 = 'frontend'    
+        IMAGE_NAME3 = 'recognition'
+        }
 
     stages {
         stage('Checkout') {
-            steps {
-                echo '📥 Cloning repository...'
-                checkout scm
-            }
+             steps {
+                    echo '📥 Cloning repository...'
+                     git url: 'https://github.com/AayushiPrajapati/realtimeFaceRecg.git', branch: 'main'
+                }
         }
+
 
         stage('Install Dependencies') {
             steps {
                 echo '🔧 Installing dependencies...'
-                sh 'echo pip install -r requirements.txt'
+                sh 'pip install -r requirements.txt'
             }
         }
 
