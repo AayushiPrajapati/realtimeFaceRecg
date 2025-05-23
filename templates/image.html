@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Image</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css">
+    <style>
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .image-container img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Face Recognition Image</h1>
+            <div>
+                <a href="/view_logs" class="btn btn-primary me-2">Back to Logs</a>
+                <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+            </div>
+        </div>
+        
+        <div class="image-container">
+            {% if image_data %}
+                <img src="data:image/png;base64,{{ image_data }}" alt="Face Recognition Image">
+            {% else %}
+                <p class="alert alert-warning">Image not available</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

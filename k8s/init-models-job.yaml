@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-data
+  namespace: face-recognition
+spec:
+  template:
+    spec:
+      containers:
+      - name: init-data
+        image: busybox
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "Current directory: $(pwd)"
+          echo "Listing /local/models directory:"
+          ls -la /local/models
+          
+          echo "Creating /app/models directory..."
+          mkdir -p /app/models  
+          
+          echo "Copying encodings.pkl..."
+          cp -v /local/models/encodings.pkl /app/models/
+          
+          echo "Setting permissions..."
+          chmod 644 /app/models/encodings.pkl
+          
+          echo "Verifying copy..."
+          ls -la /app/models/
+        volumeMounts: 
+        - name: models-volume
+          mountPath: /app/models
+        - name: local-models
+          mountPath: /local/models
+      volumes:
+      - name: models-volume
+        persistentVolumeClaim:
+          claimName: models-pvc
+      - name: local-models
+        hostPath:
+          path: /home/aayushi/Desktop/spe_project/models
+          type: Directory
+      restartPolicy: Never
+  backoffLimit: 1

@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: upload-training-data
+  namespace: face-recognition
+spec:
+  template:
+    spec:
+      containers:
+      - name: upload
+        image: upload-images:latest
+        imagePullPolicy: Never
+        command: ["sh", "-c", "cp -r /upload-data/* /app/data/ && echo 'Images copied to /app/data'"]
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+      restartPolicy: Never
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: data-pvc

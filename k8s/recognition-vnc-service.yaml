@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: recognition-vnc
+  namespace: face-recognition
+spec:
+  type: NodePort
+  ports:
+  - port: 5901
+    targetPort: 5901
+    nodePort: 30001
+    protocol: TCP
+  selector:
+    app: recognition-vnc

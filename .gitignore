@@ -1,0 +1,8 @@
+# Ignore data and model directories
+data/
+model/
+
+# Ignore all .pkl files
+*.pkl
+
+minikube-linux-amd64

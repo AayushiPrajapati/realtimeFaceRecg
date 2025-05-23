@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: training-monitor
+  namespace: monitoring  # Prometheus watches here
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: training
+  namespaceSelector:
+    matchNames:
+    - face-recognition
+  endpoints:
+  - port: prometheus-metrics  # match Service's port name
+    interval: 15s

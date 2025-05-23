@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  training:
+    container_name: training
+    build:
+      context: .
+      dockerfile: Dockerfile.training
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models 
+    command: python train_service.py
+
+  recognition:
+    container_name: recognition
+    build:
+      context: .
+      dockerfile: Dockerfile.recognition
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./db:/app/db
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    depends_on:
+      - training
+    environment:
+      - DISPLAY=${DISPLAY}
+    devices:
+      - /dev/video0:/dev/video0
+    # Make sure the container stays running
+    tty: true
+    stdin_open: true
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./db:/app/db
+      - ./models:/app/models
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - recognition
+    command: python app.py

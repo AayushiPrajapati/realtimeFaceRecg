@@ -1,0 +1,83 @@
+FROM python:3.9-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libglib2.0-0 \
+    libgtk2.0-dev \
+    libgl1-mesa-glx \
+    libxkbcommon-x11-0 \
+    libcanberra-gtk* \
+    xvfb \
+    libxcb1 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-render-util0 \
+    libxcb-shape0 \
+    libxcb-sync1 \
+    libxcb-xfixes0 \
+    libxcb-xinerama0 \
+    libxcb-xkb1 \
+    qtbase5-dev \
+    qtchooser \
+    qt5-qmake \
+    libqt5gui5 \
+    libqt5core5a \
+    libqt5dbus5 \
+    v4l-utils \
+    libv4l-dev \
+    libv4l2rds0 \
+    libv4lconvert0 \
+    libv4l-0 \
+    x11-apps \
+    x11-utils \
+    x11-xserver-utils \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for Qt and virtual display
+ENV DISPLAY=:0
+ENV QT_QPA_PLATFORM=xcb
+ENV QT_X11_NO_MITSHM=1
+
+# Check if Xvfb is installed
+RUN which Xvfb
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+
+# Install prometheus_client manually if not in requirements.txt
+RUN pip install prometheus_client
+
+# Copy recognition files
+COPY detector.py .
+COPY recognizer.py .
+COPY recognition_service.py .
+
+# Copy models from local to container
+COPY models/ /app/models/
+
+# Set permissions for models directory
+RUN chmod -R 777 /app/models
+
+# Create necessary directories
+RUN mkdir -p /app/db
+
+# Optional: Expose port for Prometheus metrics
+EXPOSE 8000 5002
+
+# Define command to run Xvfb and then the application
+CMD ["bash", "-c", "/usr/bin/Xvfb :0 -screen 0 1024x768x24 & export DISPLAY=:0 && python recognition_service.py"]   

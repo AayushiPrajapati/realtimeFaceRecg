@@ -1,0 +1,40 @@
+#!/bin/bash
+# This script helps run the recognition service from the web frontend
+
+# Check if no arguments are provided
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 [start|stop]"
+    exit 1
+fi
+
+# Get service name (we'll use docker-compose directly)
+DOCKER_SERVICE="recognition"
+
+# Execute command based on argument
+if [ "$1" == "start" ]; then
+    echo "Starting recognition service..."
+    # Use docker-compose exec to run the command
+    docker-compose exec -d $DOCKER_SERVICE python /app/recognition_service.py
+    
+    # Check if the command was successful
+    if [ $? -eq 0 ]; then
+        echo "Recognition service started successfully"
+    else
+        echo "Error: Failed to start recognition service. Make sure the container is running."
+        echo "Try restarting with: docker-compose up -d recognition"
+    fi
+elif [ "$1" == "stop" ]; then
+    echo "Stopping recognition service..."
+    docker-compose exec $DOCKER_SERVICE pkill -f "python /app/recognition_service.py"
+    
+    # Check if the command was successful
+    if [ $? -eq 0 ]; then
+        echo "Recognition service stopped successfully"
+    else
+        echo "Error: Failed to stop recognition service. The process may not be running."
+    fi
+else
+    echo "Unknown command: $1"
+    echo "Usage: $0 [start|stop]"
+    exit 1
+fi

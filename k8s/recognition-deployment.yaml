@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recognition
+  namespace: face-recognition
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recognition
+  template:
+    metadata:
+      labels:
+        app: recognition
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      initContainers:
+      - name: init-x11
+        image: busybox
+        imagePullPolicy: Never
+        command: ["/bin/sh", "-c", "mkdir -p /tmp/.X11-unix && chmod 777 /tmp/.X11-unix"]
+        volumeMounts:
+        - name: x11-socket
+          mountPath: /tmp/.X11-unix
+      containers:
+      - name: recognition
+        image: recognition:latest
+        imagePullPolicy: Never
+        securityContext:
+          privileged: true
+        command:
+        - /bin/bash
+        args:
+        - -c
+        - |
+          set -e
+          echo "Installing required packages..."
+          apt-get update && apt-get install -y \
+            xvfb \
+            libxcb1 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-sync1 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxcb-xkb1 \
+            libxkbcommon-x11-0 \
+            libxkbcommon0 \
+            qtbase5-dev \
+            qtchooser \
+            qt5-qmake \
+            libqt5gui5 \
+            libqt5core5a \
+            libqt5dbus5 \
+            v4l-utils \
+            libv4l-dev \
+            libv4l2rds0 \
+            libv4lconvert0 \
+            libv4l-0 \
+            x11-apps \
+            x11-utils \
+            x11-xserver-utils
+
+          echo "Setting up Xvfb..."
+          Xvfb :0 -screen 0 1024x768x24 &
+          XVFB_PID=$!
+
+          echo "Setting display..."
+          export DISPLAY=:0
+          export QT_QPA_PLATFORM=xcb
+          export QT_X11_NO_MITSHM=1
+          export OPENCV_VIDEOIO_BACKEND=v4l2
+          export OPENCV_VIDEOIO_PRIORITY_MSMF=0
+
+          echo "Checking video devices..."
+          ls -l /dev/video*
+          v4l2-ctl --list-devices
+
+          echo "Setting camera permissions..."
+          chmod 666 /dev/video0
+          chmod 666 /dev/video1
+          chmod 666 /dev/media0
+
+          echo "Waiting for Xvfb to start..."
+          sleep 2
+
+          echo "Running recognition service..."
+          cd /app
+          python recognition_service.py
+
+          # Keep container running
+          # tail -f /dev/null
+        env:
+        - name: DISPLAY
+          value: ":0"
+        - name: QT_QPA_PLATFORM
+          value: "xcb"
+        - name: QT_X11_NO_MITSHM
+          value: "1"
+        - name: OPENCV_VIDEOIO_BACKEND
+          value: "v4l2"
+        - name: OPENCV_VIDEOIO_PRIORITY_MSMF
+          value: "0"
+        ports:
+        - containerPort: 8000
+        - containerPort: 5002
+          name: prom-metrics
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: db-volume
+          mountPath: /app/db
+        - name: models-volume
+          mountPath: /app/models
+        - name: video0
+          mountPath: /dev/video0
+        - name: video1
+          mountPath: /dev/video1
+        - name: media0
+          mountPath: /dev/media0
+        - name: x11-socket
+          mountPath: /tmp/.X11-unix
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: data-pvc
+      - name: db-volume
+        persistentVolumeClaim:
+          claimName: db-pvc
+      - name: models-volume
+        persistentVolumeClaim:
+          claimName: models-pvc
+      - name: video0
+        hostPath:
+          path: /dev/video0
+          type: CharDevice
+      - name: video1
+        hostPath:
+          path: /dev/video1
+          type: CharDevice
+      - name: media0
+        hostPath:
+          path: /dev/media0
+          type: CharDevice
+      - name: x11-socket
+        hostPath:
+          path: /tmp/.X11-unix
+          type: DirectoryOrCreate
+     

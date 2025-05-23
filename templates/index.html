@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Face Recognition System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css" />
+    <style>
+        .card {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <h1 class="mb-4">Face Recognition System</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>System Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Face Models: <span id="models-status">Checking...</span></p>
+                        <p>Database: <span id="db-status">Checking...</span></p>
+                        <p>Records: <span id="record-count">Checking...</span></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Controls</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button id="train-btn" class="btn btn-primary">Start Training</button>
+                            <button id="recognition-toggle-btn" class="btn btn-success">Start Recognition</button>
+                            <a href="/view_logs" class="btn btn-info">View Logs</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info mt-4" id="message-area" style="display: none;"></div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        // Get status on page load
+        $(document).ready(function() {
+            updateStatus();
+            
+            // Set up periodic status updates
+            setInterval(updateStatus, 5000);
+            
+            // Training button click handler
+            $("#train-btn").click(function() {
+                $("#message-area").text("Training process started... This may take a while.").show();
+                
+                $.ajax({
+                    url: '/train',
+                    type: 'POST',
+                    success: function(response) {
+                        if (response.status === "success") {
+                            $("#message-area").text("Training completed successfully!").show();
+                        } else {
+                            // Suppress error message in UI; log instead
+                            console.error("Training error:", response.message);
+                        }
+                        updateStatus();
+                    },
+                    error: function() {
+                        // Suppress error message in UI; log instead
+                        console.error("Error communicating with server during training");
+                    }
+                });
+            });
+            
+            // Recognition toggle button click handler
+            $("#recognition-toggle-btn").click(function() {
+                const isActive = $(this).hasClass("btn-danger");
+                
+                if (isActive) {
+                    // Stop recognition
+                    $.ajax({
+                        url: '/stop_recognition',
+                        type: 'POST',
+                        success: function(response) {
+                            if (response.status === "success") {
+                                $("#message-area").text("Recognition stopped").show();
+                            } else {
+                                // Suppress error message in UI; log instead
+                                console.error("Recognition stop error:", response.message);
+                            }
+                            updateStatus();
+                        },
+                        error: function() {
+                            // Suppress error message in UI; log instead
+                            console.error("Error communicating with server during recognition stop");
+                        }
+                    });
+                } else {
+                    // Start recognition
+                    $.ajax({
+                        url: '/start_recognition',
+                        type: 'POST',
+                        success: function(response) {
+                            if (response.status === "success") {
+                                $("#message-area").text("Recognition started").show();
+                            } else {
+                                // Suppress error message in UI; log instead
+                                console.error("Recognition start error:", response.message);
+                            }
+                            updateStatus();
+                        },
+                        error: function() {
+                            // Suppress error message in UI; log instead
+                            console.error("Error communicating with server during recognition start");
+                        }
+                    });
+                }
+            });
+        });
+        
+        function updateStatus() {
+            $.ajax({
+                url: '/status',
+                type: 'GET',
+                success: function(data) {
+                    // Update models status
+                    $("#models-status").text(data.models_exist ? "Available" : "Not Available");
+                    
+                    // Update database status
+                    $("#db-status").text(data.db_exists ? "Available" : "Not Available");
+                    
+                    // Update record count
+                    $("#record-count").text(data.record_count);
+                    
+                    // Update recognition status button
+                    if (data.recognition_active) {
+                        $("#recognition-toggle-btn").removeClass("btn-success").addClass("btn-danger").text("Stop Recognition");
+                    } else {
+                        $("#recognition-toggle-btn").removeClass("btn-danger").addClass("btn-success").text("Start Recognition");
+                    }
+                },
+                error: function() {
+                    console.error("Failed to fetch status");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+
