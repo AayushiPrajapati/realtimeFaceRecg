@@ -22,7 +22,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 echo "🔧 Installing dependencies..."
-                sh 'sudo apt-get update && sudo apt-get install -y cmake g++'
+                sh 'apt-get update && apt-get install -y cmake g++'
                 sh 'pip install -r requirements.txt'
             }
         }
