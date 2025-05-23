@@ -30,8 +30,15 @@ pipeline {
 
         stage('Prepare Data') {
             steps {
-                sh 'cp -r /var/jenkins_data/data ./data'
-                sh 'cp -r /var/jenkins_data/models ./models'
+                echo '📂 Copying required data and models...'
+                sh '''
+                    cp -r /var/jenkins_data/data ./data
+                    cp -r /var/jenkins_data/data/1 ./data/
+                    cp -r /var/jenkins_data/data/2 ./data/
+                    cp -r /var/jenkins_data/models ./models
+                    cp /var/jenkins_data/models/encodings.pkl ./models/
+
+                '''
             }
         }
 
@@ -70,10 +77,10 @@ pipeline {
                     kubectl apply -f k8s/pvs.yaml
                     kubectl apply -f k8s/copy-pod.yaml
 
-                    kubectl cp /home/aayushi/Desktop/spe_project/models/encodings.pkl face-recognition/copy-models:/app/models/encodings.pkl
+                    kubectl cp ./models/encodings.pkl face-recognition/copy-models:/app/models/encodings.pkl
 
                     kubectl apply -f k8s/copy-data.yaml
-                    kubectl cp /home/aayushi/Desktop/spe_project/data/ face-recognition/copy-data:/app/
+                    kubectl cp ./data/ face-recognition/copy-data:/app/
 
                     kubectl exec -n face-recognition -it copy-models -- ls -l /app/models
                     kubectl exec -n face-recognition -it copy-data -- ls -l /app/data
