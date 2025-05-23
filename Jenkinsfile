@@ -76,6 +76,7 @@ pipeline {
                             kubectl cluster-info
                             kubectl get nodes
 
+                            kubectl delete namespace face-recognition --ignore-not-found=true
                             kubectl apply -f k8s/namespace.yaml
                             kubectl apply -f k8s/pvs.yaml 
 
