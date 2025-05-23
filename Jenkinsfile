@@ -78,7 +78,10 @@ pipeline {
 
                             kubectl delete namespace face-recognition --ignore-not-found=true
                             kubectl apply -f k8s/namespace.yaml
+                            kubectl wait --for=condition=Established --timeout=30s namespace/face-recognition
                             kubectl apply -f k8s/pvs.yaml 
+
+                            kubectl get serviceaccount default -n face-recognition || kubectl create serviceaccount default -n face-recognition
 
                             kubectl apply -f k8s/copy-pod.yaml -n face-recognition
                             kubectl wait --for=condition=Ready pod/copy-models -n face-recognition --timeout=60s
