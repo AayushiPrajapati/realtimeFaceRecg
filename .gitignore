@@ -6,3 +6,4 @@ model/
 *.pkl
 
 minikube-linux-amd64
+ngrok-stable-linux-amd64.zip

@@ -2,38 +2,18 @@ import cv2
 import pickle
 import face_recognition
 import sqlite3
-from datetime import datetime
+from datetime import datetime,timedelta
 import os
 import io
 import time
 import signal
 import sys
-from flask import Flask
-from prometheus_client import make_wsgi_app
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from werkzeug.serving import run_simple
-import numpy as np
-from prometheus_client import start_http_server, Counter, Summary  # METRIC: Import Prometheus client
 
-from detector import detect_faces, draw_boxes 
-
-os.environ['OPENCV_VIDEOIO_BACKEND'] = 'v4l2'
-os.environ['OPENCV_VIDEOIO_PRIORITY_MSMF'] = '0'
-
-# METRIC: Define Prometheus metrics
-FRAMES_PROCESSED = Counter('face_frames_processed_total', 'Total frames processed')
-RECOGNIZED_FACES = Counter('recognized_faces_total', 'Total recognized faces')
-UNKNOWN_FACES = Counter('unknown_faces_total', 'Total unknown faces')
-FRAME_PROCESSING_TIME = Summary('face_frame_processing_seconds', 'Time spent processing a frame')
-
+from detector import detect_faces, draw_boxes
 
 class FaceRecognizer:
     def __init__(self):
         # Map folder labels to actual names
-        start_http_server(8000)
-        print("[METRICS] Prometheus metrics server started at http://localhost:8000")
-
-
         self.label_map = {
             "1": "Subha",
             "2": "Ayushi"
@@ -189,21 +169,8 @@ class FaceRecognizer:
             cv2.destroyAllWindows()
             print(f"[INFO] Recognition stopped after processing {frames_processed} frames")
 
-                
-def start_metrics_server():
-    print("[METRICS] Starting Prometheus metrics server at http://0.0.0.0:5002/metrics")
-    flask_app = Flask(__name__)
-    application = DispatcherMiddleware(flask_app, {
-        '/metrics': make_wsgi_app()
-    })
-    run_simple("0.0.0.0", 5002, application)
-
 def main():
     import numpy as np  # Add missing import
-     import threading
-    # Start Prometheus Flask metrics server (optional)
-    threading.Thread(target=start_metrics_server, daemon=True).start()
-
     recognizer = FaceRecognizer()
     success = recognizer.run()
     if not success:
