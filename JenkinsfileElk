@@ -61,7 +61,7 @@ pipeline {
             }
         }
 
-         stage('Test Elasticsearch Index') {
+        stage('Test Elasticsearch Index') {
             steps {
                 echo "📡 Testing Elasticsearch..."
                 sh '''
@@ -80,11 +80,13 @@ pipeline {
                     sleep 60
                     nohup kubectl port-forward svc/kibana 5601:5601 -n monitoring > /dev/null 2>&1 &
                     echo "🔗 Kibana UI: http://localhost:5601"
+                    
+                    # ✅ Added lines for accessible Kibana URL
+                    MINIKUBE_IP=$(minikube ip)
+                    echo "🔗 Open Kibana at: http://$MINIKUBE_IP:30061"
                 '''
             }
         }
-
-       
     }
 
     post {
