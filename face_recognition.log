@@ -1,0 +1,30 @@
+2025-05-24T14:12:01Z INFO recognition_service Starting Real-Time Face Recognition...
+2025-05-24T14:12:02Z INFO recognition_service Loaded model from /app/models/lbph_model.yml
+2025-05-24T14:12:04Z INFO recognition_service Camera feed initialized: /dev/video0
+2025-05-24T14:12:06Z INFO recognition_service Face detected at (x=135, y=122, w=200, h=200)
+2025-05-24T14:12:06Z INFO recognition_service Prediction: name='Aayushi', confidence=39.5
+2025-05-24T14:12:09Z WARNING recognition_service Unknown face detected (confidence=95.2)
+2025-05-24T14:12:13Z INFO recognition_service No face detected in frame
+2025-05-24T14:12:16Z INFO recognition_service Face detected at (x=141, y=118, w=198, h=198)
+2025-05-24T14:12:16Z INFO recognition_service Prediction: name='Ravi', confidence=42.1
+2025-05-24T14:12:20Z INFO recognition_service Recognition stopped by user input
+
+2025-05-24T14:13:01Z INFO training Training started via frontend_app.py
+2025-05-24T14:13:01Z INFO training Reading data from /app/data/
+2025-05-24T14:13:02Z INFO training Found 3 persons, 82 total images
+2025-05-24T14:13:04Z INFO training LBPH model training started...
+2025-05-24T14:13:06Z INFO training LBPH model training completed in 2.3s
+2025-05-24T14:13:06Z INFO training Saved model to /app/models/lbph_model.yml
+
+2025-05-24T14:14:12Z INFO Take_data Capture session started for 'Sneha'
+2025-05-24T14:14:13Z INFO Take_data Image 1 captured for Sneha
+2025-05-24T14:14:14Z INFO Take_data Image 2 captured for Sneha
+2025-05-24T14:14:15Z INFO Take_data Image 3 captured for Sneha
+2025-05-24T14:14:16Z INFO Take_data 3 images saved to /app/data/Sneha/
+2025-05-24T14:14:16Z INFO Take_data Data capture completed
+
+2025-05-24T14:15:21Z INFO DB Web server started at http://0.0.0.0:5001
+2025-05-24T14:15:23Z INFO DB Current users in system:
+2025-05-24T14:15:23Z INFO DB  - Aayushi
+2025-05-24T14:15:23Z INFO DB  - Ravi
+2025-05-24T14:15:23Z INFO DB  - Sneha

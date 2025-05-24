@@ -8,11 +8,19 @@ import time
 import sys
 import re
 import threading
+import logging
 
 from flask import Flask
 from prometheus_client import make_wsgi_app, Counter as PromCounter, Gauge
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.serving import run_simple
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 # Prometheus metrics
 images_processed = PromCounter('images_processed_total', 'Total number of face images processed')
@@ -42,10 +50,10 @@ def train():
     os.makedirs(output_dir, exist_ok=True)
     total_images = 0
 
-    print("[INFO] Starting training process...")
+    logging.info("Starting training process...")
 
     if not os.path.exists(data_dir):
-        print(f"[ERROR] Data directory {data_dir} does not exist!")
+        logging.error(f"Data directory {data_dir} does not exist!")
         training_success.set(0)
         return False
 
@@ -58,23 +66,23 @@ def train():
                 person_dirs.append((label, person_dir))
 
     if not person_dirs:
-        print(f"[ERROR] No valid person directories found in {data_dir}!")
-        print("[INFO] Please create subdirectories for each person (e.g., data/1/, data/2/)")
+        logging.error(f"No valid person directories found in {data_dir}!")
+        logging.info("Please create subdirectories for each person (e.g., data/1/, data/2/)")
         training_success.set(0)
         return False
 
     for label, person_dir in person_dirs:
-        print(f"[INFO] Processing label '{label}'...")
+        logging.info(f"Processing label '{label}'...")
         image_files = [f for f in os.listdir(person_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
         if not image_files:
-            print(f"[WARNING] No image files found in {person_dir}")
+            logging.warning(f"No image files found in {person_dir}")
             continue
 
         for img_name in image_files:
             path = os.path.join(person_dir, img_name)
             try:
-                print(f"[DEBUG] Processing image {img_name}")
+                logging.debug(f"Processing image {img_name}")
                 image = face_recognition.load_image_file(path)
                 encs = face_recognition.face_encodings(image)
                 if encs:
@@ -82,14 +90,14 @@ def train():
                     known_names.append(label)
                     total_images += 1
                     images_processed.inc()
-                    print(f"[DEBUG] Encoded image {img_name}")
+                    logging.debug(f"Encoded image {img_name}")
                 else:
-                    print(f"[WARNING] No faces found in image {img_name}")
+                    logging.warning(f"No faces found in image {img_name}")
             except Exception as e:
-                print(f"[ERROR] Failed to process image {img_name}: {e}")
+                logging.error(f"Failed to process image {img_name}: {e}")
 
     if total_images == 0:
-        print("[ERROR] No faces found in the dataset. Exiting training.")
+        logging.error("No faces found in the dataset. Exiting training.")
         training_success.set(0)
         return False
 
@@ -97,20 +105,19 @@ def train():
     with open(encodings_path, "wb") as f:
         pickle.dump({"encodings": known_encodings, "names": known_names}, f)
 
-    print(f"[INFO] Saved {encodings_path} with {total_images} images.")
-    print(f"[INFO] Training complete on {total_images} images across {len(set(known_names))} classes.")
+    logging.info(f"Saved {encodings_path} with {total_images} images.")
+    logging.info(f"Training complete on {total_images} images across {len(set(known_names))} classes.")
 
     class_counts = Counter(known_names)
     for label, count in class_counts.items():
-        print(f"[INFO] Class '{label}': {count} images")
+        logging.info(f"Class '{label}': {count} images")
 
     training_success.set(1)
     return True
 
 if __name__ == "__main__":
-    # Start Prometheus metrics + Flask WSGI app on port 5000
-    print("[INFO] Starting metrics server on http://0.0.0.0:5002/metrics")
-    threading.Thread(target=lambda: run_simple('0.0.0.0', 5002,application), daemon=True).start()
+    logging.info("Starting metrics server on http://0.0.0.0:5002/metrics")
+    threading.Thread(target=lambda: run_simple('0.0.0.0', 5002, application), daemon=True).start()
 
     success = train()
     if not success:

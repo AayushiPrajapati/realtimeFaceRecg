@@ -1,34 +1,53 @@
 import sqlite3
 import cv2
 import numpy as np
+import logging
 
-# Connect to the SQLite database
-conn = sqlite3.connect('face_log.db')
-cursor = conn.cursor()
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
-# Fetch all records
-cursor.execute("SELECT id, name, timestamp, frame FROM face_log ORDER BY id DESC")
-records = cursor.fetchall()
+try:
+    # Connect to the SQLite database
+    conn = sqlite3.connect('face_log.db')
+    cursor = conn.cursor()
 
-print(f"Found {len(records)} records.")
+    cursor.execute("SELECT id, name, timestamp, frame FROM face_log ORDER BY id DESC")
+    records = cursor.fetchall()
 
-for record in records:
-    id, name, timestamp, frame_bytes = record
+    logging.info(f"Found {len(records)} records.")
 
-    print(f"\nID: {id}")
-    print(f"Name: {name}")
-    print(f"Timestamp: {timestamp}")
+    for record in records:
+        id, name, timestamp, frame_bytes = record
 
-    # Convert BLOB to image and display
-    np_arr = np.frombuffer(frame_bytes, dtype=np.uint8)
-    image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    if image is not None:
-        cv2.imshow(f"{name} @ {timestamp}", image)
-        key = cv2.waitKey(0)
-        if key == ord('q'):
-            break
-    else:
-        print("Could not decode image from database.")
+        logging.info(f"ID: {id}, Name: {name}, Timestamp: {timestamp}")
 
-cv2.destroyAllWindows()
-conn.close()
+        # Convert BLOB to image and display
+        try:
+            np_arr = np.frombuffer(frame_bytes, dtype=np.uint8)
+            image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            if image is not None:
+                cv2.imshow(f"{name} @ {timestamp}", image)
+                key = cv2.waitKey(0)
+                if key == ord('q'):
+                    logging.info("Quit signal received. Exiting display loop.")
+                    break
+            else:
+                logging.warning(f"Could not decode image for record ID {id}.")
+        except Exception as e:
+            logging.error(f"Error decoding/displaying image for record ID {id}: {e}")
+
+except sqlite3.Error as e:
+    logging.error(f"Database error: {e}")
+
+except Exception as e:
+    logging.error(f"Unexpected error: {e}")
+
+finally:
+    cv2.destroyAllWindows()
+    if 'conn' in locals():
+        conn.close()
+        logging.info("Database connection closed.")
