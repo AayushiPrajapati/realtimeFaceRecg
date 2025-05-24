@@ -1,0 +1,89 @@
+pipeline {
+    agent any
+
+    environment {
+        KUBE_NAMESPACE = "monitoring"
+    }
+
+    stages {
+        stage('Start Minikube') {
+            steps {
+                echo '🚀 Starting Minikube...'
+                sh '''
+                    minikube stop || true
+                    minikube delete || true
+                    minikube start --driver=docker --cpus=4 --memory=4096 --force
+                    kubectl cluster-info
+                '''
+            }
+        }
+
+        stage('Create Monitoring Namespace') {
+            steps {
+                sh "kubectl create namespace ${KUBE_NAMESPACE} || true"
+            }
+        }
+
+        stage('Apply ELK Manifests') {
+            steps {
+                echo '📦 Applying ELK manifest files...'
+                sh """
+                    kubectl apply -f elasticsearch.yaml -n ${KUBE_NAMESPACE}
+                    kubectl apply -f kibana.yaml -n ${KUBE_NAMESPACE}
+                    # kubectl apply -f logstash-deployment.yaml -n ${KUBE_NAMESPACE}
+                    kubectl apply -f filebeat.yaml -n ${KUBE_NAMESPACE}
+                    kubectl apply -f filebeat-daemonset.yaml -n ${KUBE_NAMESPACE}
+                """
+            }
+        }
+
+        stage('Wait for ELK Pods to Be Running') {
+            steps {
+                echo '⏳ Waiting for ELK stack pods...'
+                sh """
+                    for i in {1..30}; do
+                        echo "⏱️ Check \$i..."
+                        PENDING=\$(kubectl get pods -n ${KUBE_NAMESPACE} | grep -v NAME | grep -v Running | wc -l)
+                        if [ "\$PENDING" -eq 0 ]; then
+                            echo "✅ All pods are Running"
+                            break
+                        fi
+                        sleep 10
+                    done
+                    kubectl get pods -n ${KUBE_NAMESPACE}
+                """
+            }
+        }
+
+        stage('Port Forward Kibana') {
+            steps {
+                echo '🌐 Forwarding Kibana port (5601)...'
+                sh '''
+                    nohup kubectl port-forward svc/kibana 5601:5601 -n monitoring > /dev/null 2>&1 &
+                    sleep 5
+                    echo "🔗 Kibana UI: http://localhost:5601"
+                '''
+            }
+        }
+
+        stage('Test Elasticsearch Index') {
+            steps {
+                echo '📡 Testing Elasticsearch...'
+                sh '''
+                    nohup kubectl port-forward svc/elasticsearch-clusterip 9201:9200 -n monitoring > /dev/null 2>&1 &
+                    sleep 5
+                    curl -s http://localhost:9201/_cat/indices?v || echo "⚠️ Curl failed"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ ELK stack is deployed and ready!'
+        }
+        failure {
+            echo '❌ ELK deployment failed.'
+        }
+    }
+}

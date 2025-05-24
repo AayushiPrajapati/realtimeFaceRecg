@@ -11,9 +11,23 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('Ensure Minikube is Running') {
             steps {
-                echo '📥 Cloning repository...'
+                echo '🔍 Checking Kubernetes status...'
+                sh '''
+                    if ! kubectl cluster-info > /dev/null 2>&1; then
+                        echo "⚠️ Minikube not running. Starting it now..."
+                        minikube start --driver=docker --cpus=4 --memory=4096 --force
+                    else
+                        echo "✅ Minikube already running."
+                        kubectl cluster-info
+                    fi
+                '''
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
                 git url: 'https://github.com/AayushiPrajapati/realtimeFaceRecg.git', branch: 'main'
             }
         }
@@ -30,31 +44,21 @@ pipeline {
 
         stage('Prepare Data') {
             steps {
-                echo '📂 Copying required data and models...'
                 sh '''
                     mkdir -p ./data ./models
-                    cp -r /var/jenkins_data/data/1 ./data/
-                    cp -r /var/jenkins_data/data/2 ./data/
+                    cp -r /var/jenkins_data/data/* ./data/
                     cp /var/jenkins_data/models/encodings.pkl ./models/
                 '''
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Build & Push Docker Images') {
             steps {
-                echo '🐳 Building Docker images...'
                 sh """
                     docker build -t $DOCKER_REGISTRY/$IMAGE_NAME1:$IMAGE_TAG -f Dockerfile.training .
                     docker build -t $DOCKER_REGISTRY/$IMAGE_NAME2:$IMAGE_TAG -f Dockerfile.frontend .
                     docker build -t $DOCKER_REGISTRY/$IMAGE_NAME3:$IMAGE_TAG -f Dockerfile.recognition .
-                """
-            }
-        }
 
-        stage('Push Docker Images') {
-            steps {
-                echo '📦 Pushing Docker images to Docker Hub...'
-                sh """
                     docker push $DOCKER_REGISTRY/$IMAGE_NAME1:$IMAGE_TAG
                     docker push $DOCKER_REGISTRY/$IMAGE_NAME2:$IMAGE_TAG
                     docker push $DOCKER_REGISTRY/$IMAGE_NAME3:$IMAGE_TAG
@@ -62,98 +66,78 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('K8s Namespace & Volumes') {
             steps {
-                echo '🚀 Deploying to Kubernetes...'
-                script {
-                    try {
-                        echo '🔧 Starting Minikube...'
-                        sh '''
-                            minikube stop || true
-                            minikube delete || true
-                            minikube start --driver=docker --cpus=4 --memory=4096 --force
-                            minikube status
-                            kubectl cluster-info
-                        '''
+                sh '''
+                    kubectl delete namespace face-recognition --ignore-not-found=true
+                    kubectl apply -f k8s/namespace.yaml
+                    sleep 3
+                    kubectl apply -f k8s/pvs.yaml
+                '''
+            }
+        }
 
-                        echo '📦 Setting up namespace and persistent volumes...'
-                        sh '''
-                            kubectl delete namespace face-recognition --ignore-not-found=true
-                            kubectl apply -f k8s/namespace.yaml
-                            sleep 5
-                            kubectl apply -f k8s/pvs.yaml
-                        '''
+        stage('Copy Data & Models to Pod') {
+            steps {
+                sh '''
+                    kubectl apply -f k8s/copy-models.yaml
+                    kubectl wait --for=condition=Ready pod/copy-models -n face-recognition --timeout=60s
+                    kubectl cp ./models/encodings.pkl face-recognition/copy-models:/app/models/encodings.pkl || echo "Warning: models copy failed"
 
-                        echo '📁 Copying data and models...'
-                        sh '''
-                            kubectl apply -f k8s/copy-models.yaml
-                            kubectl wait --for=condition=Ready pod/copy-models -n face-recognition --timeout=60s
-                            kubectl cp ./models/encodings.pkl face-recognition/copy-models:/app/models/encodings.pkl || echo "Warning: Could not copy models file"
+                    kubectl apply -f k8s/copy-data.yaml
+                    kubectl wait --for=condition=Ready pod/copy-data -n face-recognition --timeout=60s
+                    kubectl cp ./data/ face-recognition/copy-data:/app/ || echo "Warning: data copy failed"
+                '''
+            }
+        }
 
-                            kubectl apply -f k8s/copy-data.yaml
-                            kubectl wait --for=condition=Ready pod/copy-data -n face-recognition --timeout=60s
-                            kubectl cp ./data/ face-recognition/copy-data:/app/ || echo "Warning: Could not copy data directory"
-                        '''
+        stage('Deploy Application Pods') {
+            steps {
+                sh '''
+                    kubectl apply -f k8s/frontend-deployment.yaml -n face-recognition
+                    kubectl apply -f k8s/recognition-deployment.yaml -n face-recognition
+                    kubectl apply -f k8s/training-deployment.yaml -n face-recognition
+                    kubectl apply -f k8s/services.yaml -n face-recognition
+                '''
+            }
+        }
 
-                        echo '🚀 Deploying apps...'
-                        sh '''
-                            kubectl apply -f k8s/frontend-deployment.yaml -n face-recognition
-                            kubectl apply -f k8s/recognition-deployment.yaml -n face-recognition
-                            kubectl apply -f k8s/training-deployment.yaml -n face-recognition
-                            kubectl apply -f k8s/services.yaml -n face-recognition
-                        '''
+        stage('Wait for App Pods to Be Running') {
+            steps {
+                sh '''
+                    for i in {1..30}; do
+                        echo "⏳ Waiting for face-recognition pods..."
+                        PENDING=$(kubectl get pods -n face-recognition | grep -v NAME | grep -v Running | wc -l)
+                        if [ "$PENDING" -eq 0 ]; then
+                            echo "✅ All pods are Running"
+                            break
+                        fi
+                        sleep 10
+                    done
+                    kubectl get pods -n face-recognition
+                '''
+            }
+        }
 
-                        echo '⏳ Waiting for pods to be Running...'
-                        sh '''
-                            for i in {1..30}; do
-                                echo "Check $i: Waiting for all pods to be Running..."
-                                PENDING=$(kubectl get pods -n face-recognition | grep -v NAME | grep -v Running | wc -l)
-                                if [ "$PENDING" -eq 0 ]; then
-                                    echo "✅ All pods are Running"
-                                    break
-                                fi
-                                sleep 10
-                            done
-
-                            echo "📋 Final pod status:"
-                            kubectl get pods -n face-recognition
-
-                            echo "📄 Describing non-running pods (if any):"
-                            kubectl get pods -n face-recognition | grep -v NAME | grep -v Running | awk '{print $1}' | xargs -I {} kubectl describe pod {} -n face-recognition || true
-
-                            echo "📅 Cluster events:"
-                            kubectl get events -n face-recognition --sort-by=.lastTimestamp
-                        '''
-
-                        echo '🌐 Exposing frontend service...'
-                        sh '''
-                            nohup minikube tunnel > /dev/null 2>&1 &
-                            sleep 5
-                            NODE_PORT=$(kubectl get service frontend -n face-recognition -o=jsonpath="{.spec.ports[0].nodePort}")
-                            NODE_IP=$(minikube ip)
-                            echo "✅ Access your app at: http://$NODE_IP:$NODE_PORT"
-                        '''
-
-                        echo '✅ Kubernetes deployment completed successfully!'
-
-                    } catch (Exception e) {
-                        echo "❌ Deployment failed: ${e.getMessage()}"
-                        currentBuild.result = 'UNSTABLE'
-                    }
-                }
+        stage('Expose Frontend') {
+            steps {
+                sh '''
+                    nohup minikube tunnel > /dev/null 2>&1 &
+                    sleep 5
+                    NODE_PORT=$(kubectl get service frontend -n face-recognition -o=jsonpath="{.spec.ports[0].nodePort}")
+                    NODE_IP=$(minikube ip)
+                    echo "✅ App is available at: http://$NODE_IP:$NODE_PORT"
+                '''
             }
         }
     }
 
     post {
-        always {
-            echo '🧹 Cleaning up...'
-        }
         success {
-            echo '✅ Build and deployment succeeded!'
+            echo '✅ Project deployed successfully.'
         }
         failure {
-            echo '❌ Build or deployment failed.'
+            echo '❌ Project deployment failed.'
         }
     }
 }

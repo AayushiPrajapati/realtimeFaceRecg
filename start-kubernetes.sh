@@ -87,8 +87,8 @@
 
 
     kubectl delete all --all -n face-recognition
-kubectl delete pvc --all -n face-recognition
-kubectl delete pv --all
+    kubectl delete pvc --all -n face-recognition
+    kubectl delete pv --all
     kubectl delete namespace face-recognition
     minikube stop
     minikube delete 
