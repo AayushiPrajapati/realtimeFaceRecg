@@ -16,13 +16,18 @@ spec:
       containers:
       - name: frontend
         image: aayushi6402/frontend:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 5002
         volumeMounts:
         - name: models-volume
           mountPath: /app/models
+        - name: db-volume
+          mountPath: /app/db   # <-- this is where face_log.db will be stored
       volumes:
       - name: models-volume
         persistentVolumeClaim:
           claimName: models-pvc
+      - name: db-volume
+        persistentVolumeClaim:
+          claimName: db-pvc   # <-- claimName must match your db-pvc

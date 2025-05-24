@@ -1,0 +1,14 @@
+# app-servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: app-metrics
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: face-recognition
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
